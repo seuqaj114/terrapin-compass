@@ -3,7 +3,7 @@ from sqlalchemy import create_engine
 import pandas as pd
 import numpy as np
 import plotly.express as px
-from datetime import date, timedelta
+from datetime import datetime, date, timedelta 
 from time import time
 
 import streamlit as st
@@ -11,13 +11,45 @@ import streamlit as st
 host = os.getenv("HETZNER_HOST")
 engine = create_engine(f'postgresql://readonly:readonly@{host}:5432/postgres')
 
-day = date.today() - timedelta(days=1)
-day_str = day.isoformat()
+if datetime.now().hour > 8:
+    day = date.today() - timedelta(days=1)
+    day_str = day.isoformat()
+else:
+    day = date.today() - timedelta(days=2)
+    day_str = day.isoformat()
 
 st.set_page_config(layout="wide", page_title="Terrapin Compass", page_icon="https://terrapinfinance.com/logo.webp")
 
-st.markdown('## Terrapin Compass')
-st.markdown(f'Explore and analyse pre- and post-trade flow in European bond venues. You can see all the data processed on {day_str}.')
+
+with st.columns([2,1])[0]:
+    st.markdown('## Terrapin Compass')
+    st.markdown(f'Explore and analyse pre- and post-trade flow in European bond venues.<br/>This is a restricted data version. You will only see data from the last business day: **{day_str}**.', unsafe_allow_html=True)
+    with st.expander("Learn more"):
+        st.markdown("""Our software captures pre- and post-trade data from European trading venues (made available as per
+    MIFID II regulations) and feeds it directly to a segregated servers, bypassing the need for sourcing
+    the data from each venue and reducing costs by not requiring individual licenses. Importantly, we do not “sell”
+    the trading data, only the software - the data remains yours. The data can be explored via our own
+    dashboards or easily exported and fed into your internal systems and processes via an API.
+    The trading data is combined with our own reference (static) bond information which allows us to serve clients
+    in a much simpler manner without additional agreements with third-party data providers. In addition,
+    our simple licensing for reference data allows clients to share insights more broadly internally and with clients.
+    """)
+        st.markdown("""Use cases:
+- Observe market depth and detailed
+price action across all European
+trading venues
+- Track intra-day liquidity and historical
+patterns over longer periods of time
+- Buy side: improved pre-trade models
+and ex-post assessment of ‘best
+execution’
+- Sell side: evaluate and improve
+performance by comparing lost RFQ
+with executed prices
+- Combine with internal data sets to
+track exposure and risk statistics
+- Enhanced regulatory reporting
+""")
 
 with st.columns([1,4])[0]:
     option = st.selectbox(
