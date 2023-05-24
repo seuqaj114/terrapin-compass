@@ -11,10 +11,13 @@ import streamlit as st
 host = os.getenv("HETZNER_HOST")
 engine = create_engine(f'postgresql://readonly:readonly@{host}:5432/postgres')
 
+day = date.today() - timedelta(days=1)
+day_str = day.isoformat()
+
 st.set_page_config(layout="wide", page_title="Terrapin Compass", page_icon="https://terrapinfinance.com/logo.webp")
 
 st.markdown('## Terrapin Compass')
-st.markdown('Explore and analyse pre- and post-trade flow in European bond venues')
+st.markdown(f'Explore and analyse pre- and post-trade flow in European bond venues. You can see all the data processed on {day_str}.')
 
 with st.columns([1,4])[0]:
     option = st.selectbox(
@@ -23,17 +26,16 @@ with st.columns([1,4])[0]:
 
 st.divider()
 
-yesterday = date.today() - timedelta(days=1)
-day = yesterday.isoformat()
 
 @st.cache_data
-def get_eligible_venues(date):
+def get_eligible_venues():
     eligible_venues = pd.read_sql_query(f"""
         SELECT distinct(venue) FROM trades
         WHERE quantity > 0
         AND trade_datetime > %(date)s
+        AND trade_datetime < %(date)s + interval '1 day'
         AND price_type = 'PERC'
-    """, engine, params={"date": date})["venue"].to_list()
+    """, engine, params={"date": day})["venue"].to_list()
     return list(sorted(eligible_venues))
 
 
@@ -59,7 +61,7 @@ if option == "Asset class view":
 
     with st.columns([2,3])[0]:
         with st.expander("Eligible venues"):
-            eligible_venues = get_eligible_venues(day)
+            eligible_venues = get_eligible_venues()
             selected_venues = st.multiselect('Selected venues:', eligible_venues, eligible_venues, label_visibility="collapsed")
 
 
@@ -75,6 +77,7 @@ if option == "Asset class view":
                 AND isin = trades.isin
             )
             AND trade_datetime > %(date)s
+            AND trade_datetime < %(date)s + interval '1 day'
             AND trade_datetime is not null
             AND venue in %(venues)s
         """, engine, params={"date": day, "venues": tuple(selected_venues)})
@@ -96,6 +99,7 @@ if option == "Asset class view":
                 AND isin = trades.isin
             )
             AND trade_datetime > %(date)s
+            AND trade_datetime < %(date)s + interval '1 day'
             AND trade_datetime is not null
             AND venue in %(venues)s
             GROUP BY venue
@@ -124,11 +128,12 @@ elif option == "Per-issue view":
         return pd.read_sql_query(f"""
             SELECT isin, count(*) how_many FROM trades
             WHERE EXISTS(SELECT 1 FROM bonds WHERE isin = trades.isin AND asset_class != 'asset-backed security')
-            AND trade_datetime > '{day}'
+            AND trade_datetime > %(date)s
+            AND trade_datetime < %(date)s + interval '1 day'
             GROUP BY isin
             ORDER BY how_many DESC
             LIMIT 10
-        """, engine, index_col="isin")
+        """, engine, index_col="isin", params={"date": day})
 
     @st.cache_data
     def get_most_quoted_df():
@@ -136,11 +141,12 @@ elif option == "Per-issue view":
             SELECT isin, count(*) how_many FROM quotes 
             WHERE EXISTS(SELECT 1 FROM bonds WHERE isin = quotes.isin AND asset_class != 'asset-backed security')
             AND quantity > 0
-            AND quote_datetime > '{day}'
+            AND quote_datetime > %(date)s
+            AND quote_datetime < %(date)s + interval '1 day'
             GROUP BY isin
             ORDER BY how_many DESC
             LIMIT 10
-        """, engine, index_col="isin")
+        """, engine, index_col="isin", params={"date": day})
 
 
     col1, col2 = st.columns([1,4])
@@ -163,7 +169,7 @@ elif option == "Per-issue view":
             isin = st.text_input('Input an ISIN to visualise trades and quotes')
 
             with st.expander("Eligible venues"):
-                eligible_venues = get_eligible_venues(day)
+                eligible_venues = get_eligible_venues()
                 selected_venues = st.multiselect('Selected venues:', eligible_venues, eligible_venues, label_visibility="collapsed")
 
         quotes_df = pd.read_sql_query(f"""
