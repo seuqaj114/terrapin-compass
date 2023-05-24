@@ -14,7 +14,7 @@ engine = create_engine(f'postgresql://readonly:readonly@{host}:5432/postgres')
 st.set_page_config(layout="wide", page_title="Terrapin Compass", page_icon="https://terrapinfinance.com/logo.webp")
 
 st.markdown('## Terrapin Compass')
-st.markdown('Explore and analyse pre- and post-trade flow in bond markets')
+st.markdown('Explore and analyse pre- and post-trade flow in European bond venues')
 
 with st.columns([1,4])[0]:
     option = st.selectbox(
