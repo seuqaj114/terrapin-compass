@@ -26,9 +26,9 @@ with st.columns([2,1])[0]:
     st.markdown(f'Explore and analyse pre- and post-trade flow in European bond venues.<br/>This is a restricted data version. You will only see data from the last business day: **{day_str}**.', unsafe_allow_html=True)
     with st.expander("Learn more"):
         st.markdown("""Our software captures pre- and post-trade data from European trading venues (made available as per
-    MIFID II regulations) and feeds it directly to a segregated servers, bypassing the need for sourcing
-    the data from each venue and reducing costs by not requiring individual licenses. Importantly, we do not “sell”
-    the trading data, only the software - the data remains yours. The data can be explored via our own
+    MIFID II regulations), collates and aggregates it, delivering a unified data stream
+    and reducing costs by not requiring individual venue licenses. Importantly, we do not “sell”
+    the trading data, only the software (we run and manage the infrastruture). The data can be explored via our
     dashboards or easily exported and fed into your internal systems and processes via an API.
     The trading data is combined with our own reference (static) bond information which allows us to serve clients
     in a much simpler manner without additional agreements with third-party data providers. In addition,
