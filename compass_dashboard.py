@@ -3,7 +3,7 @@ from sqlalchemy import create_engine
 import pandas as pd
 import numpy as np
 import plotly.express as px
-from datetime import date
+from datetime import date, timedelta
 from time import time
 
 import streamlit as st
@@ -23,6 +23,9 @@ with st.columns([1,4])[0]:
 
 st.divider()
 
+yesterday = date.today() - timedelta(days=1)
+day = yesterday.isoformat()
+
 @st.cache_data
 def get_eligible_venues(date):
     eligible_venues = pd.read_sql_query(f"""
@@ -33,7 +36,6 @@ def get_eligible_venues(date):
     """, engine, params={"date": date})["venue"].to_list()
     return list(sorted(eligible_venues))
 
-day = '2023-05-23'
 
 if option == "Asset class view":
     cols = st.columns(5, gap="medium")
