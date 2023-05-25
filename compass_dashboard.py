@@ -63,10 +63,10 @@ st.divider()
 def get_eligible_venues():
     eligible_venues = pd.read_sql_query(f"""
         SELECT distinct(venue) FROM trades
-        WHERE quantity > 0
-        AND trade_datetime > %(date)s
+        WHERE trade_datetime > %(date)s
         AND trade_datetime < %(date)s + interval '1 day'
         AND price_type = 'PERC'
+        AND venue is not null
     """, engine, params={"date": day})["venue"].to_list()
     return list(sorted(eligible_venues))
 
@@ -172,7 +172,6 @@ elif option == "Per-issue view":
         return pd.read_sql_query(f"""
             SELECT isin, count(*) how_many FROM quotes 
             WHERE EXISTS(SELECT 1 FROM bonds WHERE isin = quotes.isin AND asset_class != 'asset-backed security')
-            AND quantity > 0
             AND quote_datetime > %(date)s
             AND quote_datetime < %(date)s + interval '1 day'
             GROUP BY isin
@@ -209,12 +208,14 @@ elif option == "Per-issue view":
             WHERE isin = %(isin)s
             AND price > 0
             AND quote_datetime > %(date)s
+            AND quote_datetime < %(date)s + interval '1 day'
         """, engine, params={"date": day, "isin": isin})
 
         trades_df = pd.read_sql_query(f"""
             SELECT price, GREATEST(quantity, notional_amount) as quantity, 'trade' as side, trade_datetime as timestamp, venue, source FROM trades
             WHERE isin = %(isin)s
             AND trade_datetime > %(date)s
+            AND trade_datetime < %(date)s + interval '1 day'
             AND price_type = 'PERC'
             AND venue IN %(venues)s
         """, engine, params={"date": day, "isin": isin, "venues": tuple(selected_venues)})
