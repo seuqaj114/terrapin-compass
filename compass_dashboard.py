@@ -11,6 +11,9 @@ import streamlit as st
 host = os.getenv("HETZNER_HOST")
 engine = create_engine(f'postgresql://readonly:readonly@{host}:5432/postgres')
 
+# Cache persistence length in seconds
+ttl = 7_200
+
 if datetime.now().hour > 8:
     day = date.today() - timedelta(days=1)
     day_str = day.isoformat()
@@ -20,8 +23,53 @@ else:
 
 st.set_page_config(layout="wide", page_title="Terrapin Compass", page_icon="https://terrapinfinance.com/logo.webp")
 
+@st.cache_data(ttl=ttl)
+def get_eligible_venues():
+    eligible_venues = pd.read_sql_query(f"""
+        SELECT distinct(venue) FROM trades
+        WHERE trade_datetime > %(date)s
+        AND trade_datetime < %(date)s + interval '1 day'
+        AND price_type = 'PERC'
+        AND venue is not null
+    """, engine, params={"date": day})["venue"].to_list()
+    return list(sorted(eligible_venues))
 
-with st.columns([2,1])[0]:
+@st.cache_data(ttl=ttl)
+def get_most_traded_df():
+    return pd.read_sql_query(f"""
+        SELECT isin, count(*) how_many FROM trades
+        WHERE EXISTS(SELECT 1 FROM bonds WHERE isin = trades.isin AND asset_class != 'asset-backed security')
+        AND trade_datetime > %(date)s
+        AND trade_datetime < %(date)s + interval '1 day'
+        GROUP BY isin
+        ORDER BY how_many DESC
+        LIMIT 10
+    """, engine, index_col="isin", params={"date": day})
+
+@st.cache_data(ttl=ttl)
+def get_most_quoted_df():
+    return pd.read_sql_query(f"""
+        SELECT isin, count(*) how_many FROM quotes 
+        WHERE EXISTS(SELECT 1 FROM bonds WHERE isin = quotes.isin AND asset_class != 'asset-backed security')
+        AND quote_datetime > %(date)s
+        AND quote_datetime < %(date)s + interval '1 day'
+        GROUP BY isin
+        ORDER BY how_many DESC
+        LIMIT 10
+    """, engine, index_col="isin", params={"date": day})
+
+@st.cache_data(ttl=ttl)
+def get_top_level_metrics_df():
+    return pd.read_sql_query(f"""
+        SELECT count(distinct(isin)) how_many_isins, count(id) how_many_trades, count(distinct(venue)) how_many_venues FROM trades
+        WHERE EXISTS(SELECT 1 FROM bonds WHERE isin = trades.isin AND asset_class != 'asset-backed security')
+        AND trade_datetime > %(date)s
+        AND trade_datetime < %(date)s + interval '1 day'
+    """, engine, params={"date": day}).to_dict(orient="records")[0]
+
+
+col1, _, col2 = st.columns([3,1,2])
+with col1:
     st.markdown('## Terrapin Compass')
     st.markdown(f'Explore and analyse pre- and post-trade flow in European bond venues.<br/>This is a restricted data version. You will only see data from the last business day: **{day_str}**.', unsafe_allow_html=True)
     with st.expander("Learn more"):
@@ -51,24 +99,21 @@ track exposure and risk statistics
 - Enhanced regulatory reporting
 """)
 
+with col2:
+    st.caption(f'Metrics for post-trade bond data collected on {day_str}')
+    top_level_metrics = get_top_level_metrics_df()
+    col1, col2, col3 = st.columns(3)
+    col1.metric(label="Trades", value=top_level_metrics["how_many_trades"])
+    col2.metric(label="Instruments", value=top_level_metrics["how_many_isins"])
+    col3.metric(label="Venues", value=top_level_metrics["how_many_venues"])
+
+
 with st.columns([1,4])[0]:
     option = st.selectbox(
         'Choose a dashboard:',
         ["Per-issue view", "Asset class view"])
 
 st.divider()
-
-
-@st.cache_data
-def get_eligible_venues():
-    eligible_venues = pd.read_sql_query(f"""
-        SELECT distinct(venue) FROM trades
-        WHERE trade_datetime > %(date)s
-        AND trade_datetime < %(date)s + interval '1 day'
-        AND price_type = 'PERC'
-        AND venue is not null
-    """, engine, params={"date": day})["venue"].to_list()
-    return list(sorted(eligible_venues))
 
 
 if option == "Asset class view":
@@ -154,30 +199,6 @@ if option == "Asset class view":
         st.plotly_chart(fig)
 
 elif option == "Per-issue view":
-        
-    @st.cache_data
-    def get_most_traded_df():
-        return pd.read_sql_query(f"""
-            SELECT isin, count(*) how_many FROM trades
-            WHERE EXISTS(SELECT 1 FROM bonds WHERE isin = trades.isin AND asset_class != 'asset-backed security')
-            AND trade_datetime > %(date)s
-            AND trade_datetime < %(date)s + interval '1 day'
-            GROUP BY isin
-            ORDER BY how_many DESC
-            LIMIT 10
-        """, engine, index_col="isin", params={"date": day})
-
-    @st.cache_data
-    def get_most_quoted_df():
-        return pd.read_sql_query(f"""
-            SELECT isin, count(*) how_many FROM quotes 
-            WHERE EXISTS(SELECT 1 FROM bonds WHERE isin = quotes.isin AND asset_class != 'asset-backed security')
-            AND quote_datetime > %(date)s
-            AND quote_datetime < %(date)s + interval '1 day'
-            GROUP BY isin
-            ORDER BY how_many DESC
-            LIMIT 10
-        """, engine, index_col="isin", params={"date": day})
 
 
     col1, col2 = st.columns([1,4])
