@@ -100,7 +100,7 @@ track exposure and risk statistics
 """)
 
 with col2:
-    st.caption(f'Metrics for post-trade bond data collected on {day_str}')
+    st.caption(f'Metrics for post-trade bond data collected for {day_str}')
     top_level_metrics = get_top_level_metrics_df()
     col1, col2, col3 = st.columns(3)
     col1.metric(label="Trades", value=top_level_metrics["how_many_trades"])
