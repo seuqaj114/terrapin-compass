@@ -58,20 +58,29 @@ def get_most_quoted_df():
         LIMIT 10
     """, engine, index_col="isin", params={"date": day})
 
-@st.cache_data(ttl=ttl)
+@st.cache_data(ttl=ttl*3)
 def get_top_level_metrics_df():
-    return pd.read_sql_query(f"""
+    last_day_metrics = pd.read_sql_query(f"""
         SELECT count(distinct(isin)) how_many_isins, count(id) how_many_trades, count(distinct(venue)) how_many_venues FROM trades
         WHERE EXISTS(SELECT 1 FROM bonds WHERE isin = trades.isin AND asset_class != 'asset-backed security')
         AND trade_datetime > %(date)s
         AND trade_datetime < %(date)s + interval '1 day'
     """, engine, params={"date": day}).to_dict(orient="records")[0]
 
+    last_month_metrics = pd.read_sql_query(f"""
+        SELECT count(distinct(isin)) how_many_isins, count(id) how_many_trades, count(distinct(venue)) how_many_venues FROM trades
+        WHERE EXISTS(SELECT 1 FROM bonds WHERE isin = trades.isin AND asset_class != 'asset-backed security')
+        AND trade_datetime > %(date)s - interval '1 month'
+        AND trade_datetime < %(date)s + interval '1 day'
+    """, engine, params={"date": day}).to_dict(orient="records")[0]
+
+    return last_day_metrics, last_month_metrics
+
 
 col1, _, col2 = st.columns([3,1,2])
 with col1:
     st.markdown('## Terrapin Compass')
-    st.markdown(f'Explore and analyse pre- and post-trade flow in European bond venues.<br/>This is a restricted data version. You will only see data from yesterday: **{day_str}**.', unsafe_allow_html=True)
+    st.markdown(f'Explore and analyse post-trade flow in European bond venues.<br/>This is a restricted data version. You will only see data from yesterday: **{day_str}**.', unsafe_allow_html=True)
     with st.expander("Learn more"):
         st.markdown("""Our software captures pre- and post-trade data from European trading venues (made available as per
     MIFID II regulations), collates and aggregates it, delivering a unified data stream
@@ -100,12 +109,19 @@ track exposure and risk statistics
 """)
 
 with col2:
-    st.caption(f'Metrics for post-trade bond data collected for {day_str}')
-    top_level_metrics = get_top_level_metrics_df()
+    last_day_metrics, last_month_metrics = get_top_level_metrics_df()
+
+    st.caption(f'Metrics for post-trade bond data collected on {day_str}')
     col1, col2, col3 = st.columns(3)
-    col1.metric(label="Trades", value=top_level_metrics["how_many_trades"])
-    col2.metric(label="Instruments", value=top_level_metrics["how_many_isins"])
-    col3.metric(label="Venues", value=top_level_metrics["how_many_venues"])
+    col1.metric(label="Trades", value=last_day_metrics["how_many_trades"])
+    col2.metric(label="Instruments", value=last_day_metrics["how_many_isins"])
+    col3.metric(label="Venues", value=last_day_metrics["how_many_venues"])
+
+    st.caption(f'Metrics for post-trade bond data collected in the last month')
+    col1, col2, col3 = st.columns(3)
+    col1.metric(label="Trades", value=last_month_metrics["how_many_trades"])
+    col2.metric(label="Instruments", value=last_month_metrics["how_many_isins"])
+    col3.metric(label="Venues", value=last_month_metrics["how_many_venues"])
 
 
 with st.columns([1,4])[0]:
@@ -200,7 +216,6 @@ if option == "Asset class view":
 
 elif option == "Per-issue view":
 
-
     col1, col2 = st.columns([1,4])
 
     with col1:
@@ -248,39 +263,59 @@ elif option == "Per-issue view":
             WHERE isin = '{isin}'
         """, engine, index_col="ticker")
 
-        df = pd.concat([quotes_df, trades_df])
+        #df = pd.concat([quotes_df, trades_df])
+        df = trades_df
 
         if len(quotes_df) > 0:
 
             st.dataframe(issue_df)
             st.write(f"For more info on this instrument visit [https://terrapinfinance.com/{isin}](https://terrapinfinance.com/{isin})")
-            st.markdown(f"**Note:** quotes are only from Boerse Frankfurst (DFRA). Trades from all eligible venues are shown.")
+            #st.markdown(f"**Note:** quotes are only from Boerse Frankfurst (DFRA). Trades from all eligible venues are shown.")
 
             col1, col2 = st.columns(2)
             with col1:
                 fig = px.scatter(df, 
                     x='timestamp', y='price', 
-                    color="side", symbol="side", 
+                    color="venue", symbol="venue", 
                     hover_data=["timestamp", "price", "quantity", "venue", "source"], 
-                    opacity=0.95,
+                    color_discrete_sequence=px.colors.qualitative.Plotly,
                     labels={
                         "price": "Price (pct of face value)",
                         "timestamp": "Date and time"
                     })
                 fig.update_xaxes(showgrid=True, gridwidth=1)
-                fig.update_layout(title="Quote and trade prices", width=600, height=500)
+                fig.update_layout(title="Trade prices", width=600, height=500)
+                st.plotly_chart(fig)
+
+                fig = px.histogram(df, 
+                    x='venue', y='timestamp', 
+                    histfunc="count", barmode="group", nbins=100,
+                    labels={
+                        "venue": "Venue"
+                    })
+                fig.update_xaxes(showgrid=True, gridwidth=1)
+                fig.update_layout(title="Trades per venue", yaxis_title="Total number of trades", width=600, height=500)
                 st.plotly_chart(fig)
 
             with col2:
                 fig = px.histogram(df, 
-                    x='timestamp', y='quantity', 
-                    color="side", barmode="group", nbins=50,
+                    x='timestamp', y='timestamp', 
+                    histfunc="count", barmode="group", nbins=100,
                     labels={
-                        "quantity": "Total volume per time interval",
                         "timestamp": "Date and time"
                     })
                 fig.update_xaxes(showgrid=True, gridwidth=1)
-                fig.update_layout(title="Quote and trade volume", yaxis_title="Total volume per time interval", width=600, height=500)
+                fig.update_layout(title="Aggregate trades throughout the day", yaxis_title="Total number of trades", width=600, height=500)
+                st.plotly_chart(fig)
+
+                fig = px.histogram(df, 
+                    x='venue', y='quantity', 
+                    histfunc="sum", barmode="group", nbins=100,
+                    labels={
+                        "venue": "Venue"
+                    })
+                fig.update_xaxes(showgrid=True, gridwidth=1)
+                fig.update_layout(title="Volume per venue (as reported)", yaxis_title="Total volume of trades", width=600, height=500)
                 st.plotly_chart(fig)
 
         else:
