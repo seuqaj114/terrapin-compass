@@ -71,7 +71,7 @@ def get_top_level_metrics_df():
 col1, _, col2 = st.columns([3,1,2])
 with col1:
     st.markdown('## Terrapin Compass')
-    st.markdown(f'Explore and analyse pre- and post-trade flow in European bond venues.<br/>This is a restricted data version. You will only see data from the last business day: **{day_str}**.', unsafe_allow_html=True)
+    st.markdown(f'Explore and analyse pre- and post-trade flow in European bond venues.<br/>This is a restricted data version. You will only see data from yesterday: **{day_str}**.', unsafe_allow_html=True)
     with st.expander("Learn more"):
         st.markdown("""Our software captures pre- and post-trade data from European trading venues (made available as per
     MIFID II regulations), collates and aggregates it, delivering a unified data stream
