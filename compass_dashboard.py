@@ -224,10 +224,10 @@ elif option == "Per-issue view":
         st.write(f"Most traded ISINs on {day}")
         st.dataframe(most_traded_df)
 
-        most_quoted_df = get_most_quoted_df()
+        #most_quoted_df = get_most_quoted_df()
 
-        st.write(f"Most quoted ISINs on {day}")
-        st.dataframe(most_quoted_df)
+        #st.write(f"Most quoted ISINs on {day}")
+        #st.dataframe(most_quoted_df)
 
 
     with col2: 
@@ -266,7 +266,7 @@ elif option == "Per-issue view":
         #df = pd.concat([quotes_df, trades_df])
         df = trades_df
 
-        if len(quotes_df) > 0:
+        if len(trades_df) > 0:
 
             st.dataframe(issue_df)
             st.write(f"For more info on this instrument visit [https://terrapinfinance.com/{isin}](https://terrapinfinance.com/{isin})")
