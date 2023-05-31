@@ -35,16 +35,16 @@ def get_eligible_venues():
     return list(sorted(eligible_venues))
 
 @st.cache_data(ttl=ttl)
-def get_most_traded_df():
+def get_most_traded_df(issuer_type):
     return pd.read_sql_query(f"""
         SELECT isin, count(*) how_many FROM trades
-        WHERE EXISTS(SELECT 1 FROM bonds WHERE isin = trades.isin AND asset_class != 'asset-backed security')
+        WHERE EXISTS(SELECT 1 FROM bonds WHERE isin = trades.isin AND issuer_type = %(issuer_type)s AND asset_class != 'asset-backed security')
         AND trade_datetime > %(date)s
         AND trade_datetime < %(date)s + interval '1 day'
         GROUP BY isin
         ORDER BY how_many DESC
         LIMIT 10
-    """, engine, index_col="isin", params={"date": day})
+    """, engine, index_col="isin", params={"date": day, "issuer_type": issuer_type})
 
 @st.cache_data(ttl=ttl)
 def get_most_quoted_df():
@@ -219,10 +219,15 @@ elif option == "Per-issue view":
     col1, col2 = st.columns([1,4])
 
     with col1:
-        most_traded_df = get_most_traded_df()
+        most_traded_govies_df = get_most_traded_df("government")
+        st.write(f"Most traded govies on {day}")
+        st.dataframe(most_traded_govies_df)
 
-        st.write(f"Most traded ISINs on {day}")
-        st.dataframe(most_traded_df)
+        most_traded_corporates_df = get_most_traded_df("corporate")
+
+        st.write(f"Most traded corporates on {day}")
+        st.dataframe(most_traded_corporates_df)
+
 
         #most_quoted_df = get_most_quoted_df()
 
