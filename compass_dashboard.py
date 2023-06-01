@@ -289,7 +289,7 @@ elif option == "Per-issue view":
                         "timestamp": "Date and time"
                     })
                 fig.update_xaxes(showgrid=True, gridwidth=1)
-                fig.update_layout(title="Trade prices", width=600, height=500)
+                fig.update_layout(title="Trade prices", width=550, height=500)
                 st.plotly_chart(fig)
 
                 fig = px.histogram(df, 
@@ -299,7 +299,7 @@ elif option == "Per-issue view":
                         "venue": "Venue"
                     })
                 fig.update_xaxes(showgrid=True, gridwidth=1)
-                fig.update_layout(title="Trades per venue", yaxis_title="Total number of trades", width=600, height=500)
+                fig.update_layout(title="Trades per venue", yaxis_title="Total number of trades", width=550, height=500)
                 st.plotly_chart(fig)
 
             with col2:
@@ -310,7 +310,7 @@ elif option == "Per-issue view":
                         "timestamp": "Date and time"
                     })
                 fig.update_xaxes(showgrid=True, gridwidth=1)
-                fig.update_layout(title="Aggregate trades throughout the day", yaxis_title="Total number of trades", width=600, height=500)
+                fig.update_layout(title="Aggregate trades throughout the day", yaxis_title="Total number of trades", width=550, height=500)
                 st.plotly_chart(fig)
 
                 fig = px.histogram(df, 
@@ -320,7 +320,7 @@ elif option == "Per-issue view":
                         "venue": "Venue"
                     })
                 fig.update_xaxes(showgrid=True, gridwidth=1)
-                fig.update_layout(title="Volume per venue (as reported)", yaxis_title="Total volume of trades", width=600, height=500)
+                fig.update_layout(title="Volume per venue (as reported)", yaxis_title="Total volume of trades", width=550, height=500)
                 st.plotly_chart(fig)
 
         else:
