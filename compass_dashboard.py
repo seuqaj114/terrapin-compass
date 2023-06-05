@@ -14,12 +14,15 @@ engine = create_engine(f'postgresql://readonly:readonly@{host}:5432/postgres')
 # Cache persistence length in seconds
 ttl = 7_200
 
-if datetime.now().hour > 8:
-    day = date.today() - timedelta(days=1)
-    day_str = day.isoformat()
-else:
-    day = date.today() - timedelta(days=2)
-    day_str = day.isoformat()
+
+day = date(2023, 6, 2)
+day_str = day.isoformat()
+#if datetime.now().hour > 8:
+#    day = date.today() - timedelta(days=1)
+#    day_str = day.isoformat()
+#else:
+#    day = date.today() - timedelta(days=2)
+#    day_str = day.isoformat()
 
 st.set_page_config(layout="wide", page_title="Terrapin Compass", page_icon="https://terrapinfinance.com/logo.webp")
 
