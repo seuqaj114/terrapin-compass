@@ -26,6 +26,8 @@ day_str = day.isoformat()
 
 st.set_page_config(layout="wide", page_title="Terrapin Compass", page_icon="https://terrapinfinance.com/logo.webp")
 
+mic_df = pd.read_csv("mic_venue_codes.csv")
+
 @st.cache_data(ttl=ttl)
 def get_eligible_venues():
     eligible_venues = pd.read_sql_query(f"""
@@ -79,6 +81,23 @@ def get_top_level_metrics_df():
 
     return last_day_metrics, last_month_metrics
 
+@st.cache_data(ttl=ttl*3)
+def get_venue_metrics_df(issuer_type):
+    last_month_metrics = pd.read_sql_query(f"""
+        SELECT count(distinct(isin)) "Bonds traded", count(*) "Number of trades", venue "Venue MIC"
+        FROM trades
+        WHERE EXISTS(SELECT 1 FROM bonds WHERE isin = trades.isin AND asset_class != 'asset-backed security' AND issuer_type = %(issuer_type)s)
+        AND trade_datetime > %(date)s - interval '1 month'
+        AND trade_datetime < %(date)s + interval '1 day'
+        GROUP BY venue
+    """, engine, params={"date": day, "issuer_type": issuer_type})
+
+    last_month_metrics["Venue name"] = last_month_metrics["Venue MIC"].map(
+        {mic: name for mic, name in zip(mic_df["MIC"], mic_df["NAME-INSTITUTION DESCRIPTION"])}
+    )
+
+    return last_month_metrics[["Venue MIC", "Venue name", "Bonds traded", "Number of trades"]].sort_values("Venue name")
+
 
 col1, _, col2 = st.columns([3,1,2])
 with col1:
@@ -130,7 +149,7 @@ with col2:
 with st.columns([1,4])[0]:
     option = st.selectbox(
         'Choose a dashboard:',
-        ["Per-issue view", "Asset class view"])
+        ["Per-issue view", "Asset class view", "Venue coverage and metrics"])
 
 st.divider()
 
@@ -331,4 +350,13 @@ elif option == "Per-issue view":
                 st.write("No trades found. Please try a different ISIN.")
 
     
+elif option == "Venue coverage and metrics":
+    st.write(f"Metrics by issuer type and venues of execution over the last month (including Systematic Internalizers and Off-Exchange)")
 
+    venue_gov_metrics_df = get_venue_metrics_df("corporate")
+    st.write(f"Government bonds:")
+    st.table(venue_gov_metrics_df)
+
+    venue_corp_metrics_df = get_venue_metrics_df("government")
+    st.write(f"Corporate bonds:")
+    st.table(venue_corp_metrics_df)
