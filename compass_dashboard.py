@@ -353,10 +353,12 @@ elif option == "Per-issue view":
 elif option == "Venue coverage and metrics":
     st.write(f"Metrics by issuer type and venues of execution over the last month (including Systematic Internalizers and Off-Exchange)")
 
-    venue_gov_metrics_df = get_venue_metrics_df("corporate")
-    st.write(f"Government bonds:")
-    st.table(venue_gov_metrics_df)
+    with st.columns([2,1])[0]:
+        venue_gov_metrics_df = get_venue_metrics_df("corporate")
+        st.write(f"Government bonds:")
+        st.table(venue_gov_metrics_df)
 
-    venue_corp_metrics_df = get_venue_metrics_df("government")
-    st.write(f"Corporate bonds:")
-    st.table(venue_corp_metrics_df)
+    with st.columns([2,1])[0]:
+        venue_corp_metrics_df = get_venue_metrics_df("government")
+        st.write(f"Corporate bonds:")
+        st.table(venue_corp_metrics_df)
