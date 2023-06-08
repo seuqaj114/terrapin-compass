@@ -197,7 +197,6 @@ if option == "Asset class view":
             AND venue in %(venues)s
         """, engine, params={"date": day, "venues": tuple(selected_venues)})
 
-
         fig = px.histogram(trades_df, 
             x='trade_datetime', y='i',
             labels={"trade_datetime": "Date and time"}
@@ -275,7 +274,7 @@ elif option == "Per-issue view":
         """, engine, params={"date": day, "isin": isin})
 
         trades_df = pd.read_sql_query(f"""
-            SELECT price, GREATEST(quantity, notional_amount) as quantity, 'trade' as side, trade_datetime as timestamp, venue, source FROM trades
+            SELECT price, COALESCE(GREATEST(quantity, notional_amount), 0) as quantity, 'trade' as side, trade_datetime as timestamp, venue, source FROM trades
             WHERE isin = %(isin)s
             AND trade_datetime > %(date)s
             AND trade_datetime < %(date)s + interval '1 day'
