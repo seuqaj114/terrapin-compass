@@ -12,10 +12,10 @@ host = os.getenv("HETZNER_HOST")
 engine = create_engine(f'postgresql://readonly:readonly@{host}:5432/postgres')
 
 # Cache persistence length in seconds
-ttl = 7_200
+ttl = 60*60*4
 
 
-day = date(2023, 6, 2)
+day = date(2023, 6, 8)
 day_str = day.isoformat()
 #if datetime.now().hour > 8:
 #    day = date.today() - timedelta(days=1)
@@ -84,7 +84,7 @@ def get_top_level_metrics_df():
 @st.cache_data(ttl=ttl*3)
 def get_venue_metrics_df(issuer_type):
     last_month_metrics = pd.read_sql_query(f"""
-        SELECT count(distinct(isin)) "Bonds traded", count(*) "Number of trades", venue "Venue MIC"
+        SELECT count(distinct(isin)) "Unique bonds traded", count(*) "Number of trades", venue "Venue MIC"
         FROM trades
         WHERE EXISTS(SELECT 1 FROM bonds WHERE isin = trades.isin AND asset_class != 'asset-backed security' AND issuer_type = %(issuer_type)s)
         AND trade_datetime > %(date)s - interval '1 month'
@@ -96,13 +96,13 @@ def get_venue_metrics_df(issuer_type):
         {mic: name for mic, name in zip(mic_df["MIC"], mic_df["NAME-INSTITUTION DESCRIPTION"])}
     )
 
-    return last_month_metrics[["Venue MIC", "Venue name", "Bonds traded", "Number of trades"]].sort_values("Venue name")
+    return last_month_metrics[["Venue MIC", "Venue name", "Unique bonds traded", "Number of trades"]].sort_values("Venue name")
 
 
 col1, _, col2 = st.columns([3,1,2])
 with col1:
     st.markdown('## Terrapin Compass')
-    st.markdown(f'Explore and analyse post-trade flow in European bond venues.<br/>This is a restricted data version. You will only see data for: **{day_str}**.', unsafe_allow_html=True)
+    st.markdown(f'Explore and analyse post-trade flow in European bond venues.<br/>This is a restricted data version, intraday data is only shown for **{day_str}**.', unsafe_allow_html=True)
     with st.expander("Learn more"):
         st.markdown("""Our software captures pre- and post-trade data from European trading venues (made available as per
     MIFID II regulations), collates and aggregates it, delivering a unified data stream
@@ -282,6 +282,14 @@ elif option == "Per-issue view":
             AND venue IN %(venues)s
         """, engine, params={"date": day, "isin": isin, "venues": tuple(selected_venues)})
 
+        monthly_trades_df = pd.read_sql_query(f"""
+            SELECT count(*) how_many, sum(COALESCE(GREATEST(quantity, notional_amount), 0)) as quantity, venue FROM trades
+            WHERE isin = %(isin)s
+            AND trade_datetime > %(date)s - interval '1 month'
+            AND trade_datetime < %(date)s + interval '1 day'
+            GROUP BY venue
+        """, engine, params={"date": day, "isin": isin})
+
         trading_venues = trades_df["venue"].unique()
 
         issue_df = pd.read_sql_query(f"""
@@ -310,7 +318,7 @@ elif option == "Per-issue view":
                         "timestamp": "Date and time"
                     })
                 fig.update_xaxes(showgrid=True, gridwidth=1)
-                fig.update_layout(title="Trade prices", width=550, height=500)
+                fig.update_layout(title=f"Trade prices on {day_str}", width=550, height=500)
                 st.plotly_chart(fig)
 
                 fig = px.histogram(df, 
@@ -320,7 +328,17 @@ elif option == "Per-issue view":
                         "venue": "Venue"
                     })
                 fig.update_xaxes(showgrid=True, gridwidth=1)
-                fig.update_layout(title="Trades per venue", yaxis_title="Total number of trades", width=550, height=500)
+                fig.update_layout(title=f"Trades per venue on {day_str}", yaxis_title="Total number of trades", width=550, height=500)
+                st.plotly_chart(fig)
+
+                fig = px.bar(monthly_trades_df, 
+                    x='venue', y='how_many', 
+                    labels={
+                        "venue": "Venue",
+                        "how_many": "Total number of trades"
+                    })
+                fig.update_xaxes(showgrid=True, gridwidth=1)
+                fig.update_layout(title=f"Trades per venue over the last month", width=550, height=500)
                 st.plotly_chart(fig)
 
             with col2:
@@ -331,7 +349,7 @@ elif option == "Per-issue view":
                         "timestamp": "Date and time"
                     })
                 fig.update_xaxes(showgrid=True, gridwidth=1)
-                fig.update_layout(title="Aggregate trades throughout the day", yaxis_title="Total number of trades", width=550, height=500)
+                fig.update_layout(title=f"Aggregate trades throughout {day_str}", yaxis_title="Total number of trades", width=550, height=500)
                 st.plotly_chart(fig)
 
                 fig = px.histogram(df, 
@@ -341,7 +359,17 @@ elif option == "Per-issue view":
                         "venue": "Venue"
                     })
                 fig.update_xaxes(showgrid=True, gridwidth=1)
-                fig.update_layout(title="Volume per venue (as reported)", yaxis_title="Total volume of trades", width=550, height=500)
+                fig.update_layout(title=f"Volume per venue on {day_str} (as reported)", yaxis_title="Total volume of trades", width=550, height=500)
+                st.plotly_chart(fig)
+
+                fig = px.bar(monthly_trades_df, 
+                    x='venue', y='quantity', 
+                    labels={
+                        "venue": "Venue",
+                        "how_many": "Total volume of trades"
+                    })
+                fig.update_xaxes(showgrid=True, gridwidth=1)
+                fig.update_layout(title=f"Volume per venue over the last month (as reported)", width=550, height=500)
                 st.plotly_chart(fig)
 
         else:
@@ -352,12 +380,13 @@ elif option == "Per-issue view":
 elif option == "Venue coverage and metrics":
     st.write(f"Metrics by issuer type and venues of execution over the last month (including Systematic Internalizers and Off-Exchange)")
 
-    with st.columns([2,1])[0]:
+    col1, col2 = st.columns(2, gap="large")
+    with col1:
         venue_gov_metrics_df = get_venue_metrics_df("government")
         st.write(f"Government bonds:")
-        st.table(venue_gov_metrics_df)
+        st.table(venue_gov_metrics_df.reset_index(drop=True))
 
-    with st.columns([2,1])[0]:
+    with col2:
         venue_corp_metrics_df = get_venue_metrics_df("corporate")
         st.write(f"Corporate bonds:")
-        st.table(venue_corp_metrics_df)
+        st.table(venue_corp_metrics_df.reset_index(drop=True))
