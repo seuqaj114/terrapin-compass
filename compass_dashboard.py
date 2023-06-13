@@ -295,14 +295,14 @@ elif option == "Per-issue view":
         issue_df = pd.read_sql_query(f"""
             SELECT ticker, issuer, coupon, maturity_date, currency, issuer_type, asset_class, tp_sector FROM bonds
             WHERE isin = '{isin}'
-        """, engine, index_col="ticker")
+        """, engine)
 
         #df = pd.concat([quotes_df, trades_df])
         df = trades_df
 
         if len(trades_df) > 0:
 
-            st.dataframe(issue_df)
+            st.dataframe(issue_df, hide_index=True)
             st.write(f"For more info on this instrument visit [https://terrapinfinance.com/{isin}](https://terrapinfinance.com/{isin})")
             #st.markdown(f"**Note:** quotes are only from Boerse Frankfurst (DFRA). Trades from all eligible venues are shown.")
 
@@ -318,7 +318,7 @@ elif option == "Per-issue view":
                         "timestamp": "Date and time"
                     })
                 fig.update_xaxes(showgrid=True, gridwidth=1)
-                fig.update_layout(title=f"Trade prices on {day_str}", width=550, height=500)
+                fig.update_layout(title=f"Trade prices on {day_str}", width=500, height=450)
                 st.plotly_chart(fig)
 
                 fig = px.histogram(df, 
@@ -328,7 +328,7 @@ elif option == "Per-issue view":
                         "venue": "Venue"
                     })
                 fig.update_xaxes(showgrid=True, gridwidth=1)
-                fig.update_layout(title=f"Trades per venue on {day_str}", yaxis_title="Total number of trades", width=550, height=500)
+                fig.update_layout(title=f"Trades per venue on {day_str}", yaxis_title="Total number of trades", width=500, height=450)
                 st.plotly_chart(fig)
 
                 fig = px.bar(monthly_trades_df, 
@@ -338,7 +338,7 @@ elif option == "Per-issue view":
                         "how_many": "Total number of trades"
                     })
                 fig.update_xaxes(showgrid=True, gridwidth=1)
-                fig.update_layout(title=f"Trades per venue over the last month", width=550, height=500)
+                fig.update_layout(title=f"Trades per venue over the last month", width=500, height=450)
                 st.plotly_chart(fig)
 
             with col2:
@@ -349,7 +349,7 @@ elif option == "Per-issue view":
                         "timestamp": "Date and time"
                     })
                 fig.update_xaxes(showgrid=True, gridwidth=1)
-                fig.update_layout(title=f"Aggregate trades throughout {day_str}", yaxis_title="Total number of trades", width=550, height=500)
+                fig.update_layout(title=f"Aggregate trades throughout {day_str}", yaxis_title="Total number of trades", width=500, height=450)
                 st.plotly_chart(fig)
 
                 fig = px.histogram(df, 
@@ -359,7 +359,7 @@ elif option == "Per-issue view":
                         "venue": "Venue"
                     })
                 fig.update_xaxes(showgrid=True, gridwidth=1)
-                fig.update_layout(title=f"Volume per venue on {day_str} (as reported)", yaxis_title="Total volume of trades", width=550, height=500)
+                fig.update_layout(title=f"Volume per venue on {day_str} (as reported)", yaxis_title="Total volume of trades", width=500, height=450)
                 st.plotly_chart(fig)
 
                 fig = px.bar(monthly_trades_df, 
@@ -369,7 +369,7 @@ elif option == "Per-issue view":
                         "how_many": "Total volume of trades"
                     })
                 fig.update_xaxes(showgrid=True, gridwidth=1)
-                fig.update_layout(title=f"Volume per venue over the last month (as reported)", width=550, height=500)
+                fig.update_layout(title=f"Volume per venue over the last month (as reported)", width=500, height=450)
                 st.plotly_chart(fig)
 
         else:
