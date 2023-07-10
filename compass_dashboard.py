@@ -9,7 +9,7 @@ from time import time
 import streamlit as st
 
 host = os.getenv("HETZNER_HOST")
-engine = create_engine(f'postgresql://readonly:readonly@{host}:5432/postgres')
+engine = create_engine(f'postgresql://readonly:readonly@{host}:5432/tp_data')
 
 # Cache persistence length in seconds
 ttl = 60*60*4
