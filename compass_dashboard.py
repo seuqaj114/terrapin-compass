@@ -15,7 +15,7 @@ engine = create_engine(f'postgresql://readonly:readonly@{host}:5432/tp_data')
 ttl = 60*60*4
 
 
-day = date(2023, 6, 19)
+day = date(2023, 7, 7)
 day_str = day.isoformat()
 #if datetime.now().hour > 8:
 #    day = date.today() - timedelta(days=1)
